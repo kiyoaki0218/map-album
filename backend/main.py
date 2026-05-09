@@ -92,6 +92,7 @@ async def proxy_kc_send(request: Request):
 def get_system_kc_info():
     kc_secret_b64 = os.getenv("KC_SYSTEM_SECRET")
     if not kc_secret_b64:
+        print("DEBUG: KC_SYSTEM_SECRET is NOT set in environment variables")
         return None, None
         
     try:
@@ -106,7 +107,11 @@ def get_system_kc_info():
         system_address = m.hexdigest()[:40]
         
         return system_address, signing_key
-    except:
+    except ImportError:
+        print("DEBUG: PyNaCl (nacl) library is not installed")
+        return None, None
+    except Exception as e:
+        print(f"DEBUG: Error in get_system_kc_info: {e}")
         return None, None
 
 def send_kc_transfer(from_key, to_address: str, amount: int):
