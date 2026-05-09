@@ -4,19 +4,13 @@
 
 ## Future Updates (Planned)
 
-### v1.4.0 - Point System Implementation
-- **Login Bonus**: 1日1回ログインでポイント獲得
-- **Action Points**: 写真投稿や「いいね」でポイント獲得
-- **Level System**: 獲得ポイントに応じたユーザーレベル（称号）の実装
+### v1.4.0 - KC (Kurekurecoin) Integration
+- **Wallet Linkage**: KC ウォレットの連携機能
+- **Region Discovery Bonus**: 新しい市・郡での投稿時に 10,000 KC ボーナス (SYSTEMより)
+- **Secret Photos**: 100 KC を支払わないと見れない写真機能
+- **Tipping System**: 写真への自由な投げ銭（チップ）機能
 
-### v1.5.0 - Shop & Effects
-- **Point Shop**: 貯めたポイントを使えるショップ機能
-- **Special Effects**: 地図上のアイコンや投稿にエフェクトを購入・適用
-- **Custom Icons**: ショップ限定のユーザーアイコン追加
 
-### v1.6.0 - Leaderboard & Events
-- **Weekly Leaderboard**: 週間ポイントランキング
-- **Special Events**: 期間限定のフォトコンテスト機能
 
 ---
 

@@ -113,16 +113,163 @@ window.downloadImage = async function () {
     }
 };
 
-function openImageModal(src, desc) {
+let currentViewedMedia = null;
+
+function openImageModal(mediaId) {
+    const media = allMediaCache.find(m => m.id === mediaId);
+    if (!media) return;
+    
+    currentViewedMedia = media;
+
     const modal = document.getElementById('image-modal');
     const imgParam = document.getElementById('modal-image');
     const descParam = document.getElementById('modal-desc');
 
-    imgParam.src = src;
-    descParam.innerText = desc;
+    imgParam.src = media.filepath;
+    descParam.innerText = media.description || '';
+
+    // Manage buttons
+    const unlockBtn = document.getElementById('unlock-btn');
+    const tipBtn = document.getElementById('tip-btn');
+    const dlBtn = document.getElementById('download-btn');
+
+    if (media.is_secret && !media.unlocked_by_me) {
+        unlockBtn.style.display = 'flex';
+        tipBtn.style.display = 'none';
+        dlBtn.style.display = 'none';
+    } else {
+        unlockBtn.style.display = 'none';
+        tipBtn.style.display = 'flex';
+        dlBtn.style.display = 'flex';
+    }
 
     modal.classList.add('active');
 }
+
+async function signAndSendKC(toAddress, amountStr) {
+    const kcSecretBase64 = localStorage.getItem('kc_secret');
+    if (!kcSecretBase64) {
+        alert("KC秘密鍵が設定されていません。プロフィールから設定してください。");
+        return null;
+    }
+    
+    try {
+        const secretBytes = nacl.util.decodeBase64(kcSecretBase64);
+        const keyPair = nacl.sign.keyPair.fromSecretKey(secretBytes);
+        const publicKeyBase64 = nacl.util.encodeBase64(keyPair.publicKey);
+        const fromAddress = localStorage.getItem('kc_address');
+        
+        // Construct transaction message: fromAddress + toAddress + amountStr + nonce
+        const nonceStr = Date.now().toString();
+        const msgStr = fromAddress + toAddress + amountStr + nonceStr;
+        const msgBytes = nacl.util.decodeUTF8(msgStr);
+        
+        const signatureBytes = nacl.sign.detached(msgBytes, keyPair.secretKey);
+        const signatureBase64 = nacl.util.encodeBase64(signatureBytes);
+        
+        const payload = {
+            from: fromAddress,
+            to: toAddress,
+            amount: amountStr,
+            nonce: nonceStr,
+            signature: signatureBase64,
+            publicKey: publicKeyBase64
+        };
+        
+        // POST to KC Server
+        const kcResponse = await fetch('https://kc-server.vercel.app/api/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!kcResponse.ok) {
+            const err = await kcResponse.text();
+            throw new Error(err);
+        }
+        
+        return await kcResponse.json();
+    } catch (e) {
+        console.error("KC Send Error:", e);
+        alert("送金エラー: " + e.message);
+        return null;
+    }
+}
+
+window.showTipModal = function() {
+    closeModal('image-modal');
+    const modal = document.getElementById('tip-modal');
+    if (modal) modal.classList.add('active');
+};
+
+window.sendTip = async function() {
+    if (!currentViewedMedia || !currentViewedMedia.owner || !currentViewedMedia.owner.kc_address) {
+        alert("この投稿者はKCウォレットを連携していません。");
+        return;
+    }
+    
+    const amountInput = document.getElementById('tip-amount').value;
+    if (!amountInput || amountInput <= 0) {
+        alert("正しい金額を入力してください。");
+        return;
+    }
+    
+    const submitBtn = document.getElementById('tip-submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.innerText = "送金中...";
+    
+    const result = await signAndSendKC(currentViewedMedia.owner.kc_address, amountInput);
+    
+    submitBtn.disabled = false;
+    submitBtn.innerText = "送金する";
+    
+    if (result) {
+        alert("投げ銭を送りました！");
+        closeModal('tip-modal');
+    }
+};
+
+window.unlockSecretPhoto = async function() {
+    if (!currentViewedMedia || !currentViewedMedia.owner || !currentViewedMedia.owner.kc_address) {
+        alert("この投稿者はKCウォレットを連携していません。");
+        return;
+    }
+    
+    const unlockBtn = document.getElementById('unlock-btn');
+    unlockBtn.disabled = true;
+    unlockBtn.innerText = "送金確認中...";
+    
+    // 1. Send 100 KC to the owner
+    const result = await signAndSendKC(currentViewedMedia.owner.kc_address, "100");
+    
+    if (result) {
+        // 2. Report unlock to MapAlbum backend
+        try {
+            const unlockRes = await fetch(`/api/media/${currentViewedMedia.id}/unlock`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: currentUser,
+                    tx_id: result.txId || "unknown_tx"
+                })
+            });
+            
+            if (unlockRes.ok) {
+                alert("ロックを解除しました！");
+                closeModal('image-modal');
+                fetchMedia(); // Refresh to get the clear image
+            } else {
+                alert("MapAlbumでのロック解除記録に失敗しました。管理者に連絡してください。");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("エラーが発生しました。");
+        }
+    }
+    
+    unlockBtn.disabled = false;
+    unlockBtn.innerText = "100 KCで見る";
+};
 
 window.toggleCommentSection = function (mediaId) {
     const el = document.getElementById(`comment-section-${mediaId}`);
@@ -451,6 +598,40 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
     const displayName = document.getElementById('display-name').value;
     const selectedIcon = document.querySelector('input[name="icon"]:checked').value;
+    const kcSecret = document.getElementById('kc-secret').value;
+
+    let kcAddress = null;
+    let publicKeyBase64 = null;
+
+    if (kcSecret) {
+        try {
+            const secretBytes = nacl.util.decodeBase64(kcSecret);
+            const keyPair = nacl.sign.keyPair.fromSecretKey(secretBytes);
+            publicKeyBase64 = nacl.util.encodeBase64(keyPair.publicKey);
+            
+            const binaryString = window.atob(publicKeyBase64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            kcAddress = hashHex.slice(0, 40);
+            
+            localStorage.setItem('kc_secret', kcSecret);
+            localStorage.setItem('kc_public', publicKeyBase64);
+            localStorage.setItem('kc_address', kcAddress);
+        } catch (err) {
+            console.error(err);
+            alert("KC秘密鍵の形式が不正です。Base64形式の64バイトキーを入力してください。");
+            return;
+        }
+    } else {
+        kcAddress = localStorage.getItem('kc_address');
+    }
 
     // Register/Login via API
     try {
@@ -461,7 +642,8 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
                 username: username,
                 password: 'password123', // Dummy password for this demo
                 display_name: displayName,
-                icon: selectedIcon
+                icon: selectedIcon,
+                kc_address: kcAddress
             })
         });
 
@@ -554,9 +736,18 @@ function showLoginModal() {
                 const radio = document.querySelector(`input[name="icon"][value="${profile.icon}"]`);
                 if (radio) radio.checked = true;
             }
-            // Optional: Change button text to "更新" (Update)
             const btn = document.querySelector('#login-form button');
             if (btn) btn.innerText = "更新する";
+        }
+        
+        const kcSecretInput = document.getElementById('kc-secret');
+        if (kcSecretInput) {
+            if (localStorage.getItem('kc_secret')) {
+                kcSecretInput.placeholder = "保存済み（変更する場合のみ入力）";
+            } else {
+                kcSecretInput.placeholder = "省略可能ですが、投げ銭に必要です";
+            }
+            kcSecretInput.value = ''; // Always clear it for security
         }
     }
 }
@@ -676,6 +867,7 @@ if (uploadForm) {
 
         const fileInput = document.getElementById('photo-file');
         const descInput = document.getElementById('photo-desc');
+        const secretInput = document.getElementById('photo-secret');
         let latInput = document.getElementById('upload-lat');
         let lngInput = document.getElementById('upload-lng');
 
@@ -701,6 +893,9 @@ if (uploadForm) {
         formData.append('file', fileToUpload);
         formData.append('username', currentUser);
         formData.append('description', descInput.value);
+        if (secretInput && secretInput.checked) {
+            formData.append('is_secret', 'true');
+        }
 
         // Fallback: If no GPS/Location, use Map Center
         let finalLat = latInput.value;
@@ -986,7 +1181,7 @@ function updateInfoWindowContent(marker, infowindow) {
             </div>
             
             <div style="position: relative; overflow: hidden; border-radius: 8px; margin-bottom: 8px;">
-                <img src="${displayPath}" class="fade-in" onclick="openImageModal('${displayPath}', '${media.description || ''}')" style="cursor: pointer; width: 100%; height: 150px; object-fit: cover; display: block;">
+                <img src="${displayPath}" class="fade-in" onclick="openImageModal(${media.id})" style="cursor: pointer; width: 100%; height: 150px; object-fit: cover; display: block;">
             </div>
             
             <p style="margin-bottom: 5px; overflow-wrap: break-word;">${media.description || ''}</p>

@@ -24,7 +24,8 @@ def create_user(db: Session, user: schemas.UserCreate):
         username=user.username, 
         hashed_password=fake_hashed_password,
         display_name=user.display_name,
-        icon=user.icon
+        icon=user.icon,
+        kc_address=user.kc_address
     )
     db.add(db_user)
     db.commit()
@@ -171,14 +172,16 @@ def get_like_count(db: Session, media_id: int):
     """Get the number of likes for a media"""
     return db.query(models.Like).filter(models.Like.media_id == media_id).count()
 
-def update_user_profile(db: Session, user_id: int, display_name: str = None, icon: str = None):
-    """Update user display_name and/or icon"""
+def update_user_profile(db: Session, user_id: int, display_name: str = None, icon: str = None, kc_address: str = None):
+    """Update user display_name, icon, and/or kc_address"""
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if db_user:
         if display_name is not None:
             db_user.display_name = display_name
         if icon is not None:
             db_user.icon = icon
+        if kc_address is not None:
+            db_user.kc_address = kc_address
         db.commit()
         db.refresh(db_user)
     return db_user

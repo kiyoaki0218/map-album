@@ -8,6 +8,7 @@ class UserPublic(BaseModel):
     username: str
     display_name: str
     icon: str
+    kc_address: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -59,6 +60,8 @@ class MediaBase(BaseModel):
     longitude: Optional[float] = None
     description: Optional[str] = None
     taken_at: Optional[datetime] = None
+    is_secret: bool = False
+    secret_price: int = 10000000
 
 class MediaCreate(MediaBase):
     pass
@@ -73,6 +76,7 @@ class Media(MediaBase):
     comments: List[Comment] = []
     like_count: int = 0  # Computed field
     liked_by_me: bool = False  # Computed field for current user
+    unlocked_by_me: bool = False  # Computed field for secret photos
 
     
     # Custom config to allow ORM objects
@@ -87,14 +91,20 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    kc_address: Optional[str] = None
 
 class User(UserBase):
     id: int
     created_at: datetime
+    kc_address: Optional[str] = None
     media_items: List[Media] = []
 
     class Config:
         orm_mode = True
+
+class UnlockRequest(BaseModel):
+    username: str
+    tx_id: str
 
 # Token Schema (for simple auth later)
 class Token(BaseModel):

@@ -130,6 +130,10 @@
                     <label class="form-label" for="photo-desc">コメント</label>
                     <input type="text" id="photo-desc" class="form-input" placeholder="素敵な場所ですね！">
                 </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="photo-secret" value="true">
+                    <label for="photo-secret" style="margin: 0; color: #cbd5e1; font-size: 0.95rem;">シークレット写真にする (閲覧料 100 KC)</label>
+                </div>
                 <!-- Hidden lat/lng inputs -->
                 <input type="hidden" id="upload-lat">
                 <input type="hidden" id="upload-lng">
@@ -160,6 +164,11 @@
                 <div class="form-group">
                     <label class="form-label" for="display-name">表示名 (日本語OK)</label>
                     <input type="text" id="display-name" class="form-input" placeholder="田中 太郎" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="kc-secret">KC 秘密鍵 (シークレットキー) <span style="font-size: 0.8em; color: #94a3b8;">※ブラウザ内にのみ保存されます</span></label>
+                    <input type="password" id="kc-secret" class="form-input" placeholder="省略可能ですが、投げ銭に必要です">
                 </div>
 
                 <div class="form-group">
@@ -209,7 +218,15 @@
             <img id="modal-image" src=""
                 style="max-width: 100%; max-height: 55vh; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
             <p id="modal-desc" style="color: white; margin-top: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);"></p>
-            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+            <div id="modal-buttons-container" style="margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button id="unlock-btn" onclick="unlockSecretPhoto()" class="btn btn-primary"
+                    style="width: auto; padding: 10px 20px; display: none; align-items: center; gap: 5px; background: #eab308; border: none; color: #000; font-weight: bold;">
+                    <span class="material-icons-round" style="font-size: 18px;">lock_open</span> 100 KCで見る
+                </button>
+                <button id="tip-btn" onclick="showTipModal()" class="btn btn-secondary"
+                    style="width: auto; padding: 10px 20px; display: none; align-items: center; gap: 5px; background: #10b981; border: none; color: white;">
+                    <span class="material-icons-round" style="font-size: 18px;">volunteer_activism</span> 投げ銭
+                </button>
                 <button id="download-btn" onclick="downloadImage()" class="btn btn-primary"
                     style="width: auto; padding: 10px 20px; display: flex; align-items: center; gap: 5px;">
                     <span class="material-icons-round" style="font-size: 18px;">download</span> 保存
@@ -217,6 +234,20 @@
                 <button class="btn btn-secondary" onclick="closeModal('image-modal')"
                     style="width: auto; background: rgba(0,0,0,0.5); color: white; padding: 10px 20px;">閉じる</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Tip Modal -->
+    <div id="tip-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 16px;">投げ銭 (KC)</h3>
+            <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 16px;">この写真の投稿者にKCを送ります。</p>
+            <div class="form-group">
+                <label class="form-label" for="tip-amount">金額 (KC)</label>
+                <input type="number" id="tip-amount" class="form-input" placeholder="10" min="1">
+            </div>
+            <button class="btn btn-primary" onclick="sendTip()" id="tip-submit-btn">送金する</button>
+            <button class="btn btn-secondary" onclick="closeModal('tip-modal')" style="margin-top: 10px;">キャンセル</button>
         </div>
     </div>
 
@@ -229,6 +260,10 @@
 
     <!-- ExifReader for extracting GPS from images -->
     <script src="https://cdn.jsdelivr.net/npm/exifreader@4.20.0/dist/exifreader.min.js"></script>
+
+    <!-- TweetNaCl for KC Wallet Signatures -->
+    <script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tweetnacl-util@0.15.1/nacl-util.min.js"></script>
 
     <!-- Posts List Modal -->
     <div id="posts-list-modal" class="modal">

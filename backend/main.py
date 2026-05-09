@@ -44,6 +44,108 @@ def get_db():
 def health_check():
     return {"status": "healthy"}
 
+# --- KC Bonus Helpers ---
+import base64
+import hashlib
+import time
+import requests
+
+def send_kc_bonus(to_address: str, amount: int):
+    kc_secret_b64 = os.getenv("KC_SYSTEM_SECRET")
+    if not kc_secret_b64:
+        print("KC_SYSTEM_SECRET not set")
+        return None
+        
+    try:
+        import nacl.signing
+        secret_bytes = base64.b64decode(kc_secret_b64)
+        seed = secret_bytes[:32]
+        
+        signing_key = nacl.signing.SigningKey(seed)
+        verify_key = signing_key.verify_key
+        
+        public_key_b64 = base64.b64encode(verify_key.encode()).decode('utf-8')
+        
+        m = hashlib.sha256()
+        m.update(verify_key.encode())
+        from_address = m.hexdigest()[:40]
+        
+        nonce_str = str(int(time.time() * 1000))
+        amount_str = str(amount)
+        
+        msg_str = from_address + to_address + amount_str + nonce_str
+        msg_bytes = msg_str.encode('utf-8')
+        
+        signed = signing_key.sign(msg_bytes)
+        signature_b64 = base64.b64encode(signed.signature).decode('utf-8')
+        
+        payload = {
+            "from": from_address,
+            "to": to_address,
+            "amount": amount_str,
+            "nonce": nonce_str,
+            "signature": signature_b64,
+            "publicKey": public_key_b64
+        }
+        
+        res = requests.post('https://kc-server.vercel.app/api/send', json=payload)
+        if res.status_code == 200:
+            return res.json().get("txId")
+        else:
+            print(f"KC Server error: {res.text}")
+            return None
+    except Exception as e:
+        print(f"KC Bonus Error: {e}")
+        return None
+
+def process_region_bonus(db: Session, user, latitude: float, longitude: float):
+    if not user.kc_address or latitude is None or longitude is None:
+        return
+        
+    try:
+        from geopy.geocoders import Nominatim
+        geolocator = Nominatim(user_agent="mapalbum_kc_integration")
+        location = geolocator.reverse((latitude, longitude), exactly_one=True, language="ja")
+        
+        if not location or not location.raw.get("address"):
+            return
+            
+        address = location.raw["address"]
+        region_name = address.get("city") or address.get("town") or address.get("county") or address.get("village")
+        if not region_name:
+            return
+            
+        country = address.get("country_code", "unknown")
+        
+        visited = db.query(models.VisitedRegion).filter(
+            models.VisitedRegion.user_id == user.id,
+            models.VisitedRegion.region_name == region_name,
+            models.VisitedRegion.country_code == country
+        ).first()
+        
+        if not visited:
+            new_visit = models.VisitedRegion(
+                user_id=user.id,
+                region_name=region_name,
+                country_code=country
+            )
+            db.add(new_visit)
+            db.commit()
+            db.refresh(new_visit)
+            
+            tx_id = send_kc_bonus(user.kc_address, 10000)
+            if tx_id:
+                bonus_log = models.KcBonusLog(
+                    user_id=user.id,
+                    region_id=new_visit.id,
+                    amount=10000,
+                    tx_id=tx_id
+                )
+                db.add(bonus_log)
+                db.commit()
+    except Exception as e:
+        print(f"Region processing error: {e}")
+
 # --- User Endpoints ---
 
 @router.post("/users/", response_model=schemas.User)
@@ -55,7 +157,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
             db=db, 
             user_id=db_user.id, 
             display_name=user.display_name, 
-            icon=user.icon
+            icon=user.icon,
+            kc_address=user.kc_address
         )
         return updated_user
     
@@ -78,6 +181,7 @@ async def upload_media(
     description: str = Form(None),
     taken_at: str = Form(None),
     username: str = Form(...),
+    is_secret: bool = Form(False),
     db: Session = Depends(get_db)
 ):
     user = crud.get_user_by_username(db, username=username)
@@ -113,7 +217,9 @@ async def upload_media(
         latitude=latitude,
         longitude=longitude,
         description=description,
-        taken_at=parsed_date
+        taken_at=parsed_date,
+        is_secret=is_secret,
+        secret_price=10000000 if is_secret else 0
     )
 
     new_media = crud.create_user_media(
@@ -123,6 +229,14 @@ async def upload_media(
         filename=unique_filename, 
         filepath=file_location
     )
+
+    # Process KC Region Bonus asynchronously (or synchronously for now)
+    try:
+        import threading
+        # Run in background to avoid blocking the upload response
+        threading.Thread(target=process_region_bonus, args=(db, user, latitude, longitude)).start()
+    except Exception as e:
+        print(f"Failed to start region bonus thread: {e}")
 
     return {
         "id": new_media.id,
@@ -138,11 +252,16 @@ async def upload_media(
         "owner": {
             "username": user.username,
             "display_name": user.display_name,
-            "icon": user.icon
+            "icon": user.icon,
+            "kc_address": user.kc_address
         },
+        "is_secret": new_media.is_secret,
+        "secret_price": new_media.secret_price,
         "comments": [],
         "like_count": 0,
-        "liked_by_me": False
+        "liked_by_me": False,
+        "unlocked_by_me": True
+
     }
 
 @router.get("/media/")
@@ -182,25 +301,46 @@ def read_media(username: str = None, db: Session = Depends(get_db)):
                 }
             })
         
+        unlocked = False
+        if requesting_user:
+            if media.owner_id == requesting_user.id:
+                unlocked = True
+            else:
+                unlock_record = db.query(models.SecretPhotoUnlock).filter(
+                    models.SecretPhotoUnlock.media_id == media.id,
+                    models.SecretPhotoUnlock.user_id == requesting_user.id
+                ).first()
+                if unlock_record:
+                    unlocked = True
+                    
+        filepath = media.filepath
+        if media.is_secret and not unlocked:
+            if "upload/" in filepath:
+                filepath = filepath.replace("upload/", "upload/e_blur:1000/")
+                
         media_dict = {
             "id": media.id,
             "filename": media.filename,
-            "filepath": media.filepath,
+            "filepath": filepath,
             "media_type": media.media_type,
             "latitude": media.latitude,
             "longitude": media.longitude,
             "taken_at": media.taken_at,
             "uploaded_at": media.uploaded_at,
             "description": media.description,
+            "is_secret": media.is_secret,
+            "secret_price": media.secret_price,
             "owner_id": media.owner_id,
             "owner": {
                 "username": media.owner.username if media.owner else None,
                 "display_name": media.owner.display_name if media.owner else None,
-                "icon": media.owner.icon if media.owner else None
+                "icon": media.owner.icon if media.owner else None,
+                "kc_address": media.owner.kc_address if media.owner else None
             },
             "comments": comments_with_users,
             "like_count": len(media.likes),
             "liked_by_me": False,
+            "unlocked_by_me": unlocked,
             "likes": likes_with_users
         }
         
@@ -213,6 +353,33 @@ def read_media(username: str = None, db: Session = Depends(get_db)):
         result.append(media_dict)
     
     return result
+
+@router.post("/media/{media_id}/unlock")
+def unlock_secret_media(media_id: int, request: schemas.UnlockRequest, db: Session = Depends(get_db)):
+    user = crud.get_user_by_username(db, username=request.username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    media = db.query(models.Media).filter(models.Media.id == media_id).first()
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+        
+    # Check if already unlocked
+    existing = db.query(models.SecretPhotoUnlock).filter(
+        models.SecretPhotoUnlock.media_id == media_id,
+        models.SecretPhotoUnlock.user_id == user.id
+    ).first()
+    
+    if not existing:
+        new_unlock = models.SecretPhotoUnlock(
+            user_id=user.id,
+            media_id=media_id,
+            tx_id=request.tx_id
+        )
+        db.add(new_unlock)
+        db.commit()
+        
+    return {"status": "success"}
 
 @router.delete("/media/{media_id}")
 def delete_media(

@@ -20,6 +20,7 @@ class User(Base):
     display_name = Column(String) # Japanese name
     icon = Column(String) # Icon URL/Identifier
     hashed_password = Column(String) # In a real app, hash this!
+    kc_address = Column(String, nullable=True, index=True) # KC Wallet Address
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -51,6 +52,10 @@ class Media(Base):
     taken_at = Column(DateTime, nullable=True) # EXIF date or upload date
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     description = Column(String, nullable=True)
+    
+    # KC Integration Fields
+    is_secret = Column(Boolean, default=False)
+    secret_price = Column(Integer, default=10000000) # 100 KC * 10^5
     
     owner_id = Column(Integer, ForeignKey("users.id"))
 
@@ -84,4 +89,40 @@ class Like(Base):
     user = relationship("User", back_populates="likes")
     media = relationship("Media", back_populates="likes")
 
+# KC Integration Models
+class SecretPhotoUnlock(Base):
+    __tablename__ = "secret_photo_unlocks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    media_id = Column(Integer, ForeignKey("media.id"))
+    tx_id = Column(String)
+    unlocked_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User")
+    media = relationship("Media")
+
+class VisitedRegion(Base):
+    __tablename__ = "visited_regions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    region_name = Column(String)
+    country_code = Column(String)
+    first_visited_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User")
+
+class KcBonusLog(Base):
+    __tablename__ = "kc_bonus_log"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    region_id = Column(Integer, ForeignKey("visited_regions.id"))
+    amount = Column(Integer)
+    tx_id = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User")
+    region = relationship("VisitedRegion")
 
