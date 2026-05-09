@@ -284,6 +284,27 @@
 
             <div class="version-list">
                 <!-- v2.x Group -->
+                <div class="version-group">
+                    <div class="version-group-header active" onclick="toggleVersionGroup('v2_0')">
+                        <span class="version-tag" style="background:none; padding:0; font-size:1rem;">ver.2.0.x</span>
+                        <span class="version-arrow">▼</span>
+                    </div>
+                    <div id="v2_0" class="version-group-content" style="display: block;">
+                        <!-- v2.0.0 -->
+                        <div class="version-item" style="border:none; padding:0; margin-bottom:16px;">
+                            <div class="version-header">
+                                <span class="version-tag" style="background: #3b82f6;">ver.2.0.0</span>
+                                <span class="version-date">2026/05/09</span>
+                            </div>
+                            <ul class="version-notes">
+                                <li>Vercel + Supabase への完全移行 🚀</li>
+                                <li>高速・高安定なデータベース接続の確立</li>
+                                <li>通知・ポイント・ボーナス機能を削除し、シンプルに再構築 🧹</li>
+                                <li>静的ファイルとAPIの配信構成を最適化</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="version-group">
                     <div class="version-group-header" onclick="toggleVersionGroup('v1_3')">
@@ -481,7 +502,7 @@
                     <div id="user-id-display"
                         style="font-family: monospace; font-size: 0.85rem; color: var(--primary-color); word-break: break-all;">
                     </div>
-                    <div style="font-size: 0.7rem; color: var(--text-muted); text-align: right;">v1.3.5</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); text-align: right;">v2.0.0</div>
                 </div>
 
                 <button class="btn btn-secondary" onclick="closeModal('info-modal')"

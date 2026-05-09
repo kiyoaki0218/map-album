@@ -395,7 +395,7 @@ function initMap() {
     map = new google.maps.Map(document.getElementById("map"), {
         center: initialPos,
         zoom: 13,
-        mapId: 'DEMO_MAP_ID', // Optional, for advanced styling
+        // mapId: 'DEMO_MAP_ID', // Removed to avoid conflict with styles property
         disableDefaultUI: false,
         gestureHandling: 'greedy', // Enable 1-finger touch
         styles: [
