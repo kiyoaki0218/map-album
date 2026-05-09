@@ -21,45 +21,9 @@
     <script src="https://cdn.jsdelivr.net/npm/tweetnacl-util@0.15.1/nacl-util.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exif-reader@1.0.0/dist/exif-reader.min.js"></script>
 
-    <!-- Global UI Functions (must load before HTML uses onclick) -->
+    <!-- Global UI Functions - Handled in app.js -->
     <script>
-        // These functions MUST be defined before any element with onclick= referencing them
-        function showInfoModal() {
-            var modal = document.getElementById('info-modal');
-            if (modal) modal.classList.add('active');
-        }
-
-        function closeModal(id) {
-            var modal = document.getElementById(id);
-            if (modal) modal.classList.remove('active');
-        }
-
-        function promptAdminCode() {
-            var code = prompt("秘密の合言葉を入力してください");
-            if (code === "0218") {
-                localStorage.setItem('map_album_admin', 'true');
-                alert("管理者モードが有効になりました！キラキラを纏いました。");
-                location.reload();
-            } else if (code === "reset") {
-                localStorage.removeItem('map_album_admin');
-                alert("管理者モードを解除しました。");
-                location.reload();
-            }
-        }
-
-        function downloadImage() {
-            var imgEl = document.getElementById('modal-image');
-            if (!imgEl || !imgEl.src) return;
-            var src = imgEl.src;
-
-            // For Cloudinary images, use fl_attachment to force download
-            if (src.indexOf('cloudinary.com') !== -1 && src.indexOf('/upload/') !== -1 && src.indexOf('fl_attachment') === -1) {
-                src = src.replace('/upload/', '/upload/fl_attachment/');
-            }
-
-            // Redirect to the download URL - browser will download if fl_attachment is set
-            window.location.href = src;
-        }
+        // Placeholder for immediate UI needs if any, but logic moved to app.js
     </script>
 </head>
 
