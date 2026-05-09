@@ -53,8 +53,14 @@ from fastapi import Request
 
 @router.get("/kc-proxy/info")
 async def get_kc_proxy_info():
-    system_address, _ = get_system_kc_info()
-    return {"system_address": system_address}
+    system_address, signing_key = get_system_kc_info()
+    public_key_b64 = None
+    if signing_key:
+        public_key_b64 = base64.b64encode(signing_key.verify_key.encode()).decode('utf-8')
+    return {
+        "system_address": system_address,
+        "public_key": public_key_b64
+    }
 
 @router.post("/kc-proxy/send")
 async def proxy_kc_send(request: Request):
