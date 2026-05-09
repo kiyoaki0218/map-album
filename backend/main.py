@@ -44,6 +44,27 @@ def get_db():
 def health_check():
     return {"status": "healthy"}
 
+# --- KC Proxy Endpoint ---
+from fastapi import Request
+
+@router.post("/kc-proxy/send")
+async def proxy_kc_send(request: Request):
+    try:
+        payload = await request.json()
+        kc_server_url = os.environ.get("KC_SERVER_URL", "https://kc-server.vercel.app")
+        # Ensure url does not end with /
+        if kc_server_url.endswith('/'):
+            kc_server_url = kc_server_url[:-1]
+            
+        res = requests.post(f'{kc_server_url}/api/send', json=payload)
+        
+        if res.status_code != 200:
+            raise HTTPException(status_code=res.status_code, detail=res.text)
+            
+        return res.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # --- KC Bonus Helpers ---
 import base64
 import hashlib
@@ -88,7 +109,11 @@ def send_kc_bonus(to_address: str, amount: int):
             "publicKey": public_key_b64
         }
         
-        res = requests.post('https://kc-server.vercel.app/api/send', json=payload)
+        kc_server_url = os.environ.get("KC_SERVER_URL", "https://kc-server.vercel.app")
+        if kc_server_url.endswith('/'):
+            kc_server_url = kc_server_url[:-1]
+            
+        res = requests.post(f'{kc_server_url}/api/send', json=payload)
         if res.status_code == 200:
             return res.json().get("txId")
         else:

@@ -176,8 +176,8 @@ async function signAndSendKC(toAddress, amountStr) {
             publicKey: publicKeyBase64
         };
         
-        // POST to KC Server
-        const kcResponse = await fetch('https://kc-server.vercel.app/api/send', {
+        // POST to MapAlbum Backend Proxy
+        const kcResponse = await fetch('/api/kc-proxy/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
