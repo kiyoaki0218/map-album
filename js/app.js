@@ -861,7 +861,22 @@ if (uploadForm) {
         formData.append('username', currentUser);
         formData.append('description', descInput.value);
         if (secretInput && secretInput.checked) {
+            if (!confirm("シークレット投稿には 500 KC の支払いが必要です。続行しますか？")) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = originalText;
+                return;
+            }
+            
+            submitBtn.innerText = "支払い確認中...";
+            const payResult = await signAndSendKC(systemKCAddress, "500");
+            if (!payResult) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = originalText;
+                return;
+            }
             formData.append('is_secret', 'true');
+            // Store payment tx_id
+            formData.append('payment_tx_id', payResult.txId || "escrow_pay");
         }
 
         // Fallback: If no GPS/Location, use Map Center

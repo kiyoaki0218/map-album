@@ -248,14 +248,17 @@ def read_user(username: str, db: Session = Depends(get_db)):
 @router.post("/upload/", response_model=schemas.Media)
 async def upload_media(
     file: UploadFile = File(...),
-    latitude: float = Form(None),
-    longitude: float = Form(None),
-    description: str = Form(None),
-    taken_at: str = Form(None),
     username: str = Form(...),
+    description: str = Form(""),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
     is_secret: bool = Form(False),
+    taken_at: str = Form(None),
+    payment_tx_id: str = Form(None),
     db: Session = Depends(get_db)
 ):
+    if is_secret and not payment_tx_id:
+        raise HTTPException(status_code=402, detail="Secret posts require a 500KC payment.")
     user = crud.get_user_by_username(db, username=username)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
