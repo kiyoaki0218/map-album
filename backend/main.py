@@ -94,7 +94,7 @@ def send_kc_bonus(to_address: str, amount: int):
         nonce_str = str(int(time.time() * 1000))
         amount_str = str(amount)
         
-        msg_str = from_address + to_address + amount_str + nonce_str
+        msg_str = f"{from_address}:{to_address}:{amount_str}:{nonce_str}"
         msg_bytes = msg_str.encode('utf-8')
         
         signed = signing_key.sign(msg_bytes)

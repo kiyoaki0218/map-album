@@ -159,9 +159,9 @@ async function signAndSendKC(toAddress, amountStr) {
         const publicKeyBase64 = nacl.util.encodeBase64(keyPair.publicKey);
         const fromAddress = localStorage.getItem('kc_address');
         
-        // Construct transaction message: fromAddress + toAddress + amountStr + nonce
+        // Construct transaction message: fromAddress:toAddress:amountStr:nonceStr
         const nonceStr = Date.now().toString();
-        const msgStr = fromAddress + toAddress + amountStr + nonceStr;
+        const msgStr = `${fromAddress}:${toAddress}:${amountStr}:${nonceStr}`;
         const msgBytes = nacl.util.decodeUTF8(msgStr);
         
         const signatureBytes = nacl.sign.detached(msgBytes, keyPair.secretKey);
