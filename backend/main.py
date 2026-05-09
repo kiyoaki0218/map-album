@@ -47,44 +47,72 @@ def health_check():
 # --- KC Proxy Endpoint ---
 from fastapi import Request
 
+@router.get("/kc-proxy/info")
+async def get_kc_proxy_info():
+    system_address, _ = get_system_kc_info()
+    return {"system_address": system_address}
+
 @router.post("/kc-proxy/send")
 async def proxy_kc_send(request: Request):
     try:
         payload = await request.json()
         kc_server_url = os.environ.get("KC_SERVER_URL", "https://kc-server.vercel.app")
-        # Ensure url does not end with /
         if kc_server_url.endswith('/'):
             kc_server_url = kc_server_url[:-1]
-            
-        res = requests.post(f'{kc_server_url}/api/send', json=payload)
+
+        # Check for Escrow (Middle-man) mode
+        actual_to = payload.get("actual_to")
         
+        # Step 1: User -> System
+        res = requests.post(f'{kc_server_url}/api/send', json=payload)
         if res.status_code != 200:
             raise HTTPException(status_code=res.status_code, detail=res.text)
             
+        user_tx_id = res.json().get("txId")
+        
+        if actual_to:
+            # Step 2: System -> Actual Receiver
+            # We use our system secret to sign a second transfer
+            amount = int(payload.get("amount", 0))
+            system_tx_id = send_kc_bonus(actual_to, amount)
+            
+            if system_tx_id:
+                return {"txId": system_tx_id, "userTxId": user_tx_id}
+            else:
+                # If step 2 fails, it's problematic, but user already paid system.
+                # In a real app, you'd want to rollback or queue.
+                return {"txId": user_tx_id, "escrow": "pending_manual"}
+
         return res.json()
     except Exception as e:
+        if isinstance(e, HTTPException): raise e
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- KC Bonus Helpers ---
-import base64
-import hashlib
-import time
-import requests
-
-def send_kc_bonus(to_address: str, amount: int):
+def get_system_kc_info():
     kc_secret_b64 = os.getenv("KC_SYSTEM_SECRET")
     if not kc_secret_b64:
-        print("KC_SYSTEM_SECRET not set")
-        return None
+        return None, None
         
     try:
         import nacl.signing
         secret_bytes = base64.b64decode(kc_secret_b64)
         seed = secret_bytes[:32]
-        
         signing_key = nacl.signing.SigningKey(seed)
         verify_key = signing_key.verify_key
         
+        m = hashlib.sha256()
+        m.update(verify_key.encode())
+        system_address = m.hexdigest()[:40]
+        
+        return system_address, signing_key
+    except:
+        return None, None
+
+def send_kc_transfer(from_key, to_address: str, amount: int):
+    """Generic helper to send signed KC from a key"""
+    try:
+        verify_key = from_key.verify_key
         public_key_b64 = base64.b64encode(verify_key.encode()).decode('utf-8')
         
         m = hashlib.sha256()
@@ -97,7 +125,7 @@ def send_kc_bonus(to_address: str, amount: int):
         msg_str = f"{from_address}:{to_address}:{amount_str}:{nonce_str}"
         msg_bytes = msg_str.encode('utf-8')
         
-        signed = signing_key.sign(msg_bytes)
+        signed = from_key.sign(msg_bytes)
         signature_b64 = base64.b64encode(signed.signature).decode('utf-8')
         
         payload = {
@@ -116,12 +144,16 @@ def send_kc_bonus(to_address: str, amount: int):
         res = requests.post(f'{kc_server_url}/api/send', json=payload)
         if res.status_code == 200:
             return res.json().get("txId")
-        else:
-            print(f"KC Server error: {res.text}")
-            return None
-    except Exception as e:
-        print(f"KC Bonus Error: {e}")
         return None
+    except Exception as e:
+        print(f"KC Transfer Error: {e}")
+        return None
+
+def send_kc_bonus(to_address: str, amount: int):
+    system_address, signing_key = get_system_kc_info()
+    if not signing_key:
+        return None
+    return send_kc_transfer(signing_key, to_address, amount)
 
 def process_region_bonus(db: Session, user, latitude: float, longitude: float):
     if not user.kc_address or latitude is None or longitude is None:

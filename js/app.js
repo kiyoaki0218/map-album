@@ -129,7 +129,24 @@ function openImageModal(mediaId) {
     modal.classList.add('active');
 }
 
-async function signAndSendKC(toAddress, amountStr) {
+let systemKCAddress = null;
+
+// Fetch System KC Info on load
+async function fetchSystemKCInfo() {
+    try {
+        const res = await fetch('/api/kc-proxy/info');
+        if (res.ok) {
+            const data = await res.json();
+            systemKCAddress = data.system_address;
+            console.log("System KC Address loaded:", systemKCAddress);
+        }
+    } catch (e) {
+        console.warn("Failed to fetch System KC info", e);
+    }
+}
+fetchSystemKCInfo();
+
+async function signAndSendKC(toAddress, amountStr, actualTo = null) {
     const kcSecretBase64 = localStorage.getItem('kc_secret');
     if (!kcSecretBase64) {
         alert("KC秘密鍵が設定されていません。プロフィールから設定してください。");
@@ -158,6 +175,10 @@ async function signAndSendKC(toAddress, amountStr) {
             signature: signatureBase64,
             publicKey: publicKeyBase64
         };
+
+        if (actualTo) {
+            payload.actual_to = actualTo;
+        }
         
         // POST to MapAlbum Backend Proxy
         const kcResponse = await fetch('/api/kc-proxy/send', {
@@ -201,7 +222,16 @@ window.sendTip = async function() {
     submitBtn.disabled = true;
     submitBtn.innerText = "送金中...";
     
-    const result = await signAndSendKC(currentViewedMedia.owner.kc_address, amountInput);
+    const receiverAddress = currentViewedMedia.owner.kc_address;
+    let result;
+    
+    if (systemKCAddress && receiverAddress !== systemKCAddress) {
+        // Escrow Mode: User -> System (with actual_to: Receiver)
+        result = await signAndSendKC(systemKCAddress, amountInput, receiverAddress);
+    } else {
+        // Direct Mode
+        result = await signAndSendKC(receiverAddress, amountInput);
+    }
     
     submitBtn.disabled = false;
     submitBtn.innerText = "送金する";
@@ -222,8 +252,16 @@ window.unlockSecretPhoto = async function() {
     unlockBtn.disabled = true;
     unlockBtn.innerText = "送金確認中...";
     
-    // 1. Send 100 KC to the owner
-    const result = await signAndSendKC(currentViewedMedia.owner.kc_address, "100");
+    const receiverAddress = currentViewedMedia.owner.kc_address;
+    let result;
+
+    if (systemKCAddress && receiverAddress !== systemKCAddress) {
+        // Escrow Mode
+        result = await signAndSendKC(systemKCAddress, "100", receiverAddress);
+    } else {
+        // Direct Mode
+        result = await signAndSendKC(receiverAddress, "100");
+    }
     
     if (result) {
         // 2. Report unlock to MapAlbum backend
