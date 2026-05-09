@@ -1,5 +1,5 @@
 # backend/models.py
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Table, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Table, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from backend.database import Base
@@ -85,6 +85,10 @@ class Like(Base):
     
     user_id = Column(Integer, ForeignKey("users.id"))
     media_id = Column(Integer, ForeignKey("media.id"))
+    
+    __table_args__ = (
+        UniqueConstraint('user_id', 'media_id', name='uq_like_user_media'),
+    )
     
     user = relationship("User", back_populates="likes")
     media = relationship("Media", back_populates="likes")

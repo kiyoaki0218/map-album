@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from backend import models, schemas
 import hashlib
 from datetime import datetime, timedelta
+import sqlalchemy.exc
 
 # Admin List (Hardcoded for stability)
 ADMIN_USERNAMES = ["user_7c7fkpiie", "user_wqldnphp4", "user_nihj67h3l", "user_5ibklldsx"]
@@ -155,15 +156,21 @@ def toggle_like(db: Session, user_id: int, media_id: int):
     """
     existing = get_like(db, user_id, media_id)
     
-    if existing:
-        db.delete(existing)
-        liked = False
-    else:
-        db_like = models.Like(user_id=user_id, media_id=media_id)
-        db.add(db_like)
-        liked = True
-    
-    db.commit() # Single commit for atomic transaction
+    try:
+        if existing:
+            db.delete(existing)
+            liked = False
+        else:
+            db_like = models.Like(user_id=user_id, media_id=media_id)
+            db.add(db_like)
+            liked = True
+        
+        db.commit() # Single commit for atomic transaction
+    except sqlalchemy.exc.IntegrityError:
+        # 重複して追加しようとした場合などはロールバックして現在の状態を返す
+        db.rollback()
+        existing = get_like(db, user_id, media_id)
+        liked = True if existing else False
         
     like_count = db.query(models.Like).filter(models.Like.media_id == media_id).count()
     return liked, like_count

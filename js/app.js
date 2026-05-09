@@ -1399,11 +1399,19 @@ window.deleteComment = async function (commentId, latLngKey) {
 
 // --- Like Functionality ---
 
+// 連打防止用のSet
+const pendingLikes = new Set();
+
 window.toggleLike = async function (mediaId, latLngKey) {
     if (!currentUser) {
         alert("いいねするにはログインしてください。");
         return;
     }
+
+    if (pendingLikes.has(mediaId)) {
+        return; // 処理中なら何もしない
+    }
+    pendingLikes.add(mediaId);
 
     // Immediate feedback (optimistic UI) could go here, but waiting for server is safer for points
 
@@ -1433,6 +1441,8 @@ window.toggleLike = async function (mediaId, latLngKey) {
         }
     } catch (err) {
         console.error("Like error:", err);
+    } finally {
+        pendingLikes.delete(mediaId);
     }
 };
 
@@ -1564,7 +1574,7 @@ window.showLikeUsersForMedia = async function (mediaId) {
                 const nameHtml = getUserNameHtml(user);
 
                 div.innerHTML = `
-                    <img src="${user.icon || 'https://via.placeholder.com/32'}" style="width:32px; height:32px; border-radius:50%; margin-right:10px;">
+                    <span style="font-size: 2rem; margin-right: 10px;">${user.icon || '👤'}</span>
                     <span style="font-weight:bold; color:#e2e8f0;">${nameHtml}</span>
                  `;
                 list.appendChild(div);
