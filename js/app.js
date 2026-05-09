@@ -321,7 +321,7 @@ window.toggleSortDirection = function () {
 window.navigateToPost = function (lat, lng, mediaId) {
     // Close any open modals
     closeModal('posts-list-modal');
-    closeModal('notification-modal');
+
 
     // Pan map to location
     if (map) {
@@ -480,12 +480,13 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             // Update local admin state
             isAdmin = isKnownAdmin(username);
 
+            const loginModal = document.getElementById('login-modal');
             if (loginModal) loginModal.classList.remove('active');
 
             // Initial UI update from local storage
             updateUserDisplay();
 
-            // Fetch latest data including points
+            // Fetch latest user data
             fetchUserProfile(true);
 
         } else {

@@ -77,23 +77,10 @@
                 </button>
             </div>
 
-            <!-- Notification Bell -->
-            <div class="notification-container" style="position: relative; margin-right: 10px;">
-                <span class="material-icons-round notification-bell"
-                    style="color:white; cursor:pointer; font-size: 1.5rem;"
-                    onclick="showNotificationModal()">notifications</span>
-                <span id="notification-badge" class="notification-badge" style="display:none;">0</span>
-            </div>
+            <!-- Profile -->
             <div class="user-profile" style="display: none; align-items: center;">
 
-                <div id="user-stats"
-                    style="display: none; align-items: center; gap: 8px; margin-right: 12px; font-size: 0.85rem; padding: 4px 10px; background: rgba(255,255,255,0.1); border-radius: 20px;">
-                    <span id="user-level-badge"
-                        style="background: #fbbf24; color: #000; padding: 1px 6px; border-radius: 4px; font-weight: bold; font-size: 0.75rem;">Lv.1</span>
-                    <span style="color: #fbbf24; font-weight: bold;">
-                        <span id="user-points">0</span> pt
-                    </span>
-                </div>
+
 
                 <span id="current-username" style="display:none; margin-right: 8px;">ゲスト</span>
                 <span class="material-icons-round" style="color:white; cursor:pointer;"
@@ -114,19 +101,7 @@
         </div>
     </div>
 
-    <!-- Login Bonus Modal -->
-    <div id="login-bonus-modal" class="modal" style="display: none; z-index: 2000;">
-        <div class="modal-content"
-            style="text-align: center; background: linear-gradient(135deg, #1e1e2f 0%, #2d2d44 100%); border: 1px solid #4ade80;">
-            <h3 style="color: #4ade80; font-size: 1.5rem; margin-bottom: 12px;">🎉 ログインボーナス</h3>
-            <div style="font-size: 3rem; margin: 20px 0;">🎁</div>
-            <p style="font-size: 1.2rem; margin-bottom: 8px;">今日のボーナスを獲得しました！</p>
-            <div style="font-size: 2rem; font-weight: bold; color: #fbbf24; margin-bottom: 20px;">+10 pt</div>
-            <button onclick="closeLoginBonusModal()" class="btn-primary" style="width: 100%; font-weight: bold;">
-                受け取る
-            </button>
-        </div>
-    </div>
+
 
     <!-- Upload Modal -->
     <div id="upload-modal" class="modal">
@@ -215,14 +190,7 @@
                     </div>
                 </div>
 
-                <div class="form-group" style="text-align: center; margin-top: 20px; margin-bottom: 0;">
-                    <label
-                        style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: #cbd5e1; user-select: none;">
-                        <input type="checkbox" id="login-notification-check" checked
-                            style="width: 16px; height: 16px; cursor: pointer;">
-                        <span>🔔 新着通知をブラウザで受け取る</span>
-                    </label>
-                </div>
+
 
                 <button type="submit" class="btn btn-primary" style="margin-top: 20px;">はじめる</button>
             </form>
@@ -292,25 +260,7 @@
         </div>
     </div>
 
-    <!-- Notification Modal -->
-    <div id="notification-modal" class="modal">
-        <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
-            <div
-                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px;">
-                <h3 style="margin: 0; white-space: nowrap;">🔔 通知</h3>
-                <div style="display: flex; gap: 8px;">
-                    <button id="enable-browser-noti-btn" class="btn btn-secondary"
-                        onclick="requestNotificationPermission()"
-                        style="padding: 4px 8px; font-size: 0.75rem; white-space: nowrap; display: none;">🔔 ON</button>
-                </div>
-            </div>
-            <div id="notification-list" style="max-height: 400px; overflow-y: auto;">
-                <p style="color: var(--text-muted); text-align: center;">通知はありません</p>
-            </div>
-            <button class="btn btn-secondary" onclick="closeModal('notification-modal')"
-                style="margin-top: 16px; width: 100%;">閉じる</button>
-        </div>
-    </div>
+
 
     <!-- Like Users Modal (Admin Only) -->
     <div id="like-users-modal" class="modal">
@@ -329,7 +279,7 @@
         <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3 style="margin: 0;">アプリ情報</h3>
-                <span style="font-size: 0.8rem; color: var(--text-muted);">ver.1.3.5</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">ver.2.0.0</span>
             </div>
 
             <div class="version-list">
