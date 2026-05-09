@@ -819,63 +819,7 @@ if (fileDropArea) {
     });
 }
 
-// Handle File Selection & EXIF
-const photoFile = document.getElementById('photo-file');
-if (photoFile) {
-    photoFile.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) {
-            clearUploadFile();
-            return;
-        }
-
-        // Show preview
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const previewImg = document.getElementById('file-preview-img');
-            if (previewImg) previewImg.src = e.target.result;
-            const previewContainer = document.getElementById('file-preview-container');
-            if (previewContainer) previewContainer.style.display = 'block';
-            const selectMsg = document.getElementById('file-select-msg');
-            if (selectMsg) selectMsg.style.display = 'none';
-        };
-        reader.readAsDataURL(file);
-
-        try {
-            const tags = await ExifReader.load(file);
-            console.log("EXIF tags found", tags);
-
-            // Extract GPS if available
-            if (tags['GPSLatitude'] && tags['GPSLongitude']) {
-                console.log("GPS data found in EXIF");
-                let lat = tags['GPSLatitude'].description;
-                let lng = tags['GPSLongitude'].description;
-                
-                // Handle different ExifReader output formats
-                if (typeof lat === 'string' || typeof lat === 'number') {
-                    lat = parseFloat(lat);
-                    lng = parseFloat(lng);
-                    
-                    const latRef = tags['GPSLatitudeRef'] ? tags['GPSLatitudeRef'].value[0] : 'N';
-                    const lngRef = tags['GPSLongitudeRef'] ? tags['GPSLongitudeRef'].value[0] : 'E';
-                    
-                    if (latRef === 'S') lat = -lat;
-                    if (lngRef === 'W') lng = -lng;
-                    
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        document.getElementById('upload-lat').value = lat;
-                        document.getElementById('upload-lng').value = lng;
-                        console.log("Used EXIF location:", lat, lng);
-                        const msg = document.getElementById('file-select-msg');
-                        if (msg) msg.innerHTML += '<br><span style="color: #10b981; font-size: 0.8rem;">📍 写真の位置情報を取得しました</span>';
-                    }
-                }
-            }
-        } catch (error) {
-            console.log('No EXIF data found or error parsing', error);
-        }
-    });
-}
+// File Selection Logic removed and integrated into processSelectedFile below
 
 // Helper: Compress Image
 async function compressImage(file, maxWidth = 1200, quality = 0.7) {
@@ -1513,7 +1457,7 @@ window.handleFileSelect = function (e) {
     processSelectedFile(file);
 };
 
-function processSelectedFile(file) {
+async function processSelectedFile(file) {
     if (!file || !file.type.startsWith('image/')) return;
 
     const previewContainer = document.getElementById('file-preview-container');
@@ -1522,6 +1466,7 @@ function processSelectedFile(file) {
     const submitBtn = document.getElementById('upload-submit-btn');
     const dropArea = document.getElementById('file-drop-area');
 
+    // 1. Show Preview
     const reader = new FileReader();
     reader.onload = function (e) {
         if (previewImg) previewImg.src = e.target.result;
@@ -1531,6 +1476,35 @@ function processSelectedFile(file) {
         if (dropArea) dropArea.style.border = '2px solid var(--primary-color)';
     };
     reader.readAsDataURL(file);
+
+    // 2. Extract EXIF GPS
+    try {
+        if (typeof ExifReader !== 'undefined') {
+            const tags = await ExifReader.load(file);
+            if (tags['GPSLatitude'] && tags['GPSLongitude']) {
+                let lat = tags['GPSLatitude'].description;
+                let lng = tags['GPSLongitude'].description;
+                
+                if (typeof lat === 'string' || typeof lat === 'number') {
+                    lat = parseFloat(lat);
+                    lng = parseFloat(lng);
+                    const latRef = tags['GPSLatitudeRef'] ? tags['GPSLatitudeRef'].value[0] : 'N';
+                    const lngRef = tags['GPSLongitudeRef'] ? tags['GPSLongitudeRef'].value[0] : 'E';
+                    if (latRef === 'S') lat = -lat;
+                    if (lngRef === 'W') lng = -lng;
+                    
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        document.getElementById('upload-lat').value = lat;
+                        document.getElementById('upload-lng').value = lng;
+                        console.log("EXIF Location Set:", lat, lng);
+                        if (msg) msg.innerHTML += '<br><span style="color: #10b981; font-size: 0.8rem;">📍 位置情報を取得しました</span>';
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.warn("EXIF read failed", err);
+    }
 }
 
 // Initialize Upload Handlers
