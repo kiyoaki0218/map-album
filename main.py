@@ -1,9 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from backend.main import router
 import os
+
+# プロジェクトのルートディレクトリを取得
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = FastAPI(title="Map Album API")
 
@@ -16,6 +18,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# エラーハンドリング（デバッグ用：エラー内容を画面に表示）
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"message": "Internal Server Error", "detail": str(exc)},
+    )
+
 # APIルーターを登録
 app.include_router(router)
 
@@ -25,18 +35,21 @@ def health_check():
     return {"status": "healthy"}
 
 # 静的ファイルの配信設定
-# 1. / へのアクセスで index.html を返す
 @app.get("/")
 async def read_index():
-    return FileResponse(os.path.join("public", "index.html"))
+    index_path = os.path.join(BASE_DIR, "public", "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return JSONResponse(status_code=404, content={"message": "index.html not found", "path": index_path})
 
-# 2. その他の静的ファイル（CSS/JSなど）を /public 配下としてマウント
-# またはルート直下から探せるように個別設定
 @app.get("/{file_path:path}")
 async def catch_all(file_path: str):
-    # public フォルダ内にファイルがあればそれを返す
-    local_path = os.path.join("public", file_path)
+    local_path = os.path.join(BASE_DIR, "public", file_path)
     if os.path.isfile(local_path):
         return FileResponse(local_path)
-    # なければ index.html を返す（SPA的な挙動）
-    return FileResponse(os.path.join("public", "index.html"))
+    
+    # ファイルが見つからない場合は index.html を返す
+    index_path = os.path.join(BASE_DIR, "public", "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return JSONResponse(status_code=404, content={"message": "File not found"})
