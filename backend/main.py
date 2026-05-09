@@ -341,7 +341,7 @@ def read_media(username: str = None, db: Session = Depends(get_db)):
         filepath = media.filepath
         if media.is_secret and not unlocked:
             if "upload/" in filepath:
-                filepath = filepath.replace("upload/", "upload/e_blur:2000,e_pixelate:10,e_brightness:40,e_saturation:-70/")
+                filepath = filepath.replace("upload/", "upload/w_30,h_30,c_fill/e_blur:2000,e_brightness:30,e_saturation:-70/")
                 
         media_dict = {
             "id": media.id,
