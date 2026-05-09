@@ -773,12 +773,35 @@ function getCurrentLocation() {
     );
 }
 
+function clearUploadFile() {
+    const fileInput = document.getElementById('photo-file');
+    if (fileInput) fileInput.value = '';
+    
+    const previewContainer = document.getElementById('file-preview-container');
+    if (previewContainer) previewContainer.style.display = 'none';
+    
+    const selectMsg = document.getElementById('file-select-msg');
+    if (selectMsg) {
+        selectMsg.style.display = 'block';
+        selectMsg.innerHTML = '<span style="font-size: 2rem; display: block; margin-bottom: 8px;">📸</span><span style="color: var(--text-muted); font-size: 0.9rem;">タップしてカメラを起動<br>またはファイルを選択</span>';
+    }
+    
+    const previewImg = document.getElementById('file-preview-img');
+    if (previewImg) previewImg.src = '';
+    
+    const latInput = document.getElementById('upload-lat');
+    if (latInput) latInput.value = '';
+    const lngInput = document.getElementById('upload-lng');
+    if (lngInput) lngInput.value = '';
+}
+
 function showUploadModal() {
     if (!currentUser) {
         showLoginModal();
         return;
     }
     document.getElementById('upload-form').reset();
+    clearUploadFile();
     
     const uploadModal = document.getElementById('upload-modal');
     if (uploadModal) uploadModal.classList.add('active');
@@ -787,12 +810,36 @@ function showUploadModal() {
     getCurrentLocation();
 }
 
+const fileDropArea = document.getElementById('file-drop-area');
+if (fileDropArea) {
+    fileDropArea.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'BUTTON') {
+            document.getElementById('photo-file').click();
+        }
+    });
+}
+
 // Handle File Selection & EXIF
 const photoFile = document.getElementById('photo-file');
 if (photoFile) {
     photoFile.addEventListener('change', async (e) => {
         const file = e.target.files[0];
-        if (!file) return;
+        if (!file) {
+            clearUploadFile();
+            return;
+        }
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const previewImg = document.getElementById('file-preview-img');
+            if (previewImg) previewImg.src = e.target.result;
+            const previewContainer = document.getElementById('file-preview-container');
+            if (previewContainer) previewContainer.style.display = 'block';
+            const selectMsg = document.getElementById('file-select-msg');
+            if (selectMsg) selectMsg.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
 
         try {
             const tags = await ExifReader.load(file);
@@ -801,10 +848,31 @@ if (photoFile) {
             // Extract GPS if available
             if (tags['GPSLatitude'] && tags['GPSLongitude']) {
                 console.log("GPS data found in EXIF");
-                // Logic to use EXIF GPS would go here if we wanted to auto-fill hidden inputs or override map center logic
+                let lat = tags['GPSLatitude'].description;
+                let lng = tags['GPSLongitude'].description;
+                
+                // Handle different ExifReader output formats
+                if (typeof lat === 'string' || typeof lat === 'number') {
+                    lat = parseFloat(lat);
+                    lng = parseFloat(lng);
+                    
+                    const latRef = tags['GPSLatitudeRef'] ? tags['GPSLatitudeRef'].value[0] : 'N';
+                    const lngRef = tags['GPSLongitudeRef'] ? tags['GPSLongitudeRef'].value[0] : 'E';
+                    
+                    if (latRef === 'S') lat = -lat;
+                    if (lngRef === 'W') lng = -lng;
+                    
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        document.getElementById('upload-lat').value = lat;
+                        document.getElementById('upload-lng').value = lng;
+                        console.log("Used EXIF location:", lat, lng);
+                        const msg = document.getElementById('file-select-msg');
+                        if (msg) msg.innerHTML += '<br><span style="color: #10b981; font-size: 0.8rem;">📍 写真の位置情報を取得しました</span>';
+                    }
+                }
             }
         } catch (error) {
-            console.log('No EXIF data found', error);
+            console.log('No EXIF data found or error parsing', error);
         }
     });
 }
