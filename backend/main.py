@@ -7,6 +7,10 @@ from sqlalchemy.orm import Session
 from typing import List
 from contextlib import asynccontextmanager
 import os
+import base64
+import hashlib
+import time
+import requests
 from datetime import datetime
 
 from backend import models, schemas, crud, database
