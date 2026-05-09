@@ -130,11 +130,20 @@
                     <label class="form-label" for="photo-desc">コメント</label>
                     <input type="text" id="photo-desc" class="form-input" placeholder="素敵な場所ですね！">
                 </div>
+                <div class="form-group">
+                    <label class="form-label">位置情報</label>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+                        <button type="button" onclick="getCurrentLocation()" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8rem; width: auto;">
+                            📍 現在地を取得
+                        </button>
+                        <span id="location-status" style="font-size: 0.8rem; color: #94a3b8;">取得待ち...</span>
+                    </div>
+                </div>
                 <!-- Hidden lat/lng inputs -->
                 <input type="hidden" id="upload-lat">
                 <input type="hidden" id="upload-lng">
 
-                <button type="submit" class="btn btn-primary" id="upload-submit-btn" disabled>アップロード</button>
+                <button type="submit" class="btn btn-primary" id="upload-submit-btn">アップロード</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal('upload-modal')">キャンセル</button>
             </form>
         </div>
@@ -301,6 +310,7 @@
                                 <li>高速・高安定なデータベース接続の確立</li>
                                 <li>通知・ポイント・ボーナス機能を削除し、シンプルに再構築 🧹</li>
                                 <li>静的ファイルとAPIの配信構成を最適化</li>
+                                <li>位置情報の取得精度向上とステータス表示の追加 📍</li>
                             </ul>
                         </div>
                     </div>
