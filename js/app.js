@@ -564,27 +564,19 @@ function showLoginModal() {
 // --- Upload Handling ---
 
 function getCurrentLocation() {
-    const status = document.getElementById('location-status');
     const latInput = document.getElementById('upload-lat');
     const lngInput = document.getElementById('upload-lng');
 
-    if (!navigator.geolocation) {
-        if (status) status.innerText = "GPS未対応";
-        return;
-    }
-
-    if (status) status.innerText = "取得中...";
+    if (!navigator.geolocation) return;
 
     navigator.geolocation.getCurrentPosition(
         (position) => {
             if (latInput) latInput.value = position.coords.latitude;
             if (lngInput) lngInput.value = position.coords.longitude;
-            if (status) status.innerText = "✅ 取得完了";
             console.log("Location acquired:", position.coords.latitude, position.coords.longitude);
         },
         (err) => {
             console.error("Location error:", err);
-            if (status) status.innerText = "❌ 取得失敗";
         },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
     );
@@ -597,14 +589,10 @@ function showUploadModal() {
     }
     document.getElementById('upload-form').reset();
     
-    // Reset status
-    const status = document.getElementById('location-status');
-    if (status) status.innerText = "取得待ち...";
-
     const uploadModal = document.getElementById('upload-modal');
     if (uploadModal) uploadModal.classList.add('active');
 
-    // Auto-fetch location
+    // Auto-fetch location behind the scenes
     getCurrentLocation();
 }
 

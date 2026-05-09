@@ -130,15 +130,6 @@
                     <label class="form-label" for="photo-desc">コメント</label>
                     <input type="text" id="photo-desc" class="form-input" placeholder="素敵な場所ですね！">
                 </div>
-                <div class="form-group">
-                    <label class="form-label">位置情報</label>
-                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                        <button type="button" onclick="getCurrentLocation()" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8rem; width: auto;">
-                            📍 現在地を取得
-                        </button>
-                        <span id="location-status" style="font-size: 0.8rem; color: #94a3b8;">取得待ち...</span>
-                    </div>
-                </div>
                 <!-- Hidden lat/lng inputs -->
                 <input type="hidden" id="upload-lat">
                 <input type="hidden" id="upload-lng">
@@ -156,7 +147,11 @@
     <!-- Login/Register Modal -->
     <div id="login-modal" class="modal active">
         <div class="modal-content">
-            <h3 style="margin-bottom: 16px;">プロフィール設定</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">プロフィール設定</h3>
+                <button onclick="closeModal('login-modal')"
+                    style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0;">×</button>
+            </div>
             <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 20px;">マップに表示されるあなたの名前とアイコンを決めてください。</p>
 
             <form id="login-form">
