@@ -1,0 +1,34 @@
+# Environment variables (secrets)
+.env
+
+# Database files
+*.db
+
+# Uploaded images (local only)
+uploads/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE/Editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# SSL certificates (local dev only)
+cert.pem
+key.pem
+
+# Old migration/patch scripts (not needed for deploy)
+migrate_*.py
+inspect_db.py
+fix_api_paths.py
+generate_cert.py
+backend/patch_*.py
+_backup_v2_2/
+
