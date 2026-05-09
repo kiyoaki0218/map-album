@@ -32,9 +32,22 @@ console.log("Map Album v1.3.5 - Supporters:", HARDCODED_SUPPORTER_USERNAMES);
 
 // --- Global Helpers (Available immediately) ---
 
-// UI Helpers are handled via window.XXX assignments below or later in the file
+window.showInfoModal = () => {
+    const modal = document.getElementById('info-modal');
+    if (modal) {
+        const userIdDisplay = document.getElementById('user-id-display');
+        const userId = localStorage.getItem('map_album_user');
+        if (userIdDisplay) {
+            userIdDisplay.textContent = userId || '(未設定)';
+        }
+        modal.classList.add('active');
+    }
+};
 
-// Gamification Helpers removed
+window.closeModal = (id) => {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('active');
+};
 
 window.fetchUserProfile = async function () {
     if (!currentUser) return;
@@ -42,10 +55,6 @@ window.fetchUserProfile = async function () {
         const response = await fetch(`/api/users/${encodeURIComponent(currentUser)}`);
         if (response.ok) {
             const user = await response.json();
-
-
-
-            // Also update local storage profile if needed
             const profile = JSON.parse(localStorage.getItem('map_album_profile') || '{}');
             if (profile.username === currentUser) {
                 localStorage.setItem('map_album_profile', JSON.stringify(profile));
@@ -56,12 +65,35 @@ window.fetchUserProfile = async function () {
     }
 };
 
-// Profile and auth handling logic
 window.downloadImage = async function () {
     const imgEl = document.getElementById('modal-image');
     if (!imgEl || !imgEl.src) return;
     let src = imgEl.src;
-    // ... logic remains same, just ensuring no duplication ...
+
+    if (src.includes('cloudinary.com')) {
+        if (src.includes('/upload/') && !src.includes('fl_attachment')) {
+            src = src.replace('/upload/', '/upload/fl_attachment/');
+            window.location.href = src;
+            return;
+        }
+    }
+
+    try {
+        const response = await fetch(src);
+        if (!response.ok) throw new Error("CORS error");
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = src.split('/').pop() || "photo.jpg";
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch (err) {
+        window.open(src, '_blank');
+    }
+};
 
 
 let currentViewedMedia = null;
