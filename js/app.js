@@ -1397,6 +1397,44 @@ window.deleteComment = async function (commentId, latLngKey) {
     }
 };
 
+window.deleteMedia = async function (mediaId, latLngKey) {
+    if (!confirm("この画像を削除しますか？")) return;
+
+    try {
+        const url = `/api/media/${mediaId}?username=${encodeURIComponent(currentUser)}`;
+        const response = await fetch(url, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            // Local update
+            const marker = markersMap[latLngKey];
+            if (marker && marker.mediaGroup) {
+                marker.mediaGroup = marker.mediaGroup.filter(m => m.id !== mediaId);
+                
+                if (marker.mediaGroup.length === 0) {
+                    marker.setMap(null);
+                    delete markersMap[latLngKey];
+                } else {
+                    // Update index if needed
+                    if (marker.currentIndex >= marker.mediaGroup.length) {
+                        marker.currentIndex = 0;
+                    }
+                    updateInfoWindowContent(marker, marker.infowindow);
+                }
+            }
+            alert("削除しました");
+            fetchMedia();
+        } else {
+            const errText = await response.text();
+            alert("削除に失敗しました: " + errText);
+        }
+    } catch (err) {
+        console.error(err);
+        alert("削除中にエラーが発生しました");
+    }
+};
+
 // --- Like Functionality ---
 
 // 連打防止用のSet

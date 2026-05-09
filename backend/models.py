@@ -63,6 +63,7 @@ class Media(Base):
     owner = relationship("User", back_populates="media_items")
     comments = relationship("Comment", back_populates="media", cascade="all, delete-orphan")
     likes = relationship("Like", back_populates="media", cascade="all, delete-orphan")
+    unlocks = relationship("SecretPhotoUnlock", back_populates="media", cascade="all, delete-orphan")
 
 class Comment(Base):
     __tablename__ = "comments"
@@ -98,13 +99,13 @@ class SecretPhotoUnlock(Base):
     __tablename__ = "secret_photo_unlocks"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    media_id = Column(Integer, ForeignKey("media.id"))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    media_id = Column(Integer, ForeignKey("media.id", ondelete="CASCADE"))
     tx_id = Column(String)
     unlocked_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User")
-    media = relationship("Media")
+    media = relationship("Media", back_populates="unlocks")
 
 class VisitedRegion(Base):
     __tablename__ = "visited_regions"
