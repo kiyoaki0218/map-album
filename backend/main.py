@@ -340,9 +340,9 @@ async def upload_media(
     }
 
 @router.get("/media/")
-def read_media(username: str = None, db: Session = Depends(get_db)):
-    """Get all media with like counts and user's like status"""
-    media_list = crud.get_all_media(db)
+def read_media(username: str = None, since_id: int = None, db: Session = Depends(get_db)):
+    """Get all media (or since since_id) with like counts and user's like status"""
+    media_list = crud.get_all_media(db, since_id=since_id)
     
     requesting_user = None
     if username:

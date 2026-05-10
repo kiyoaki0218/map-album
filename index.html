@@ -184,6 +184,9 @@
         <div class="modal-content"
             style="max-width: 90%; width: auto; background: transparent; box-shadow: none; border: none; text-align: center;"
             onclick="event.stopPropagation()">
+            <div id="modal-secret-label" class="modal-secret-badge" style="display: none;">
+                <span class="material-icons-round" style="font-size: 16px;">lock</span> SECRET PHOTO
+            </div>
             <img id="modal-image" src=""
                 style="max-width: 100%; max-height: 55vh; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
             <p id="modal-desc" style="color: white; margin-top: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);"></p>
@@ -287,17 +290,30 @@
         <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3 style="margin: 0;">アプリ情報</h3>
-                <span style="font-size: 0.8rem; color: var(--text-muted);">ver.2.0.0</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">ver.2.1.0</span>
             </div>
 
             <div class="version-list">
                 <!-- v2.x Group -->
                 <div class="version-group">
-                    <div class="version-group-header active" onclick="toggleVersionGroup('v2_0')">
-                        <span class="version-tag" style="background:none; padding:0; font-size:1rem;">ver.2.0.x</span>
+                    <div class="version-group-header" onclick="toggleVersionGroup('v2_0')">
+                        <span class="version-tag" style="background:none; padding:0; font-size:1rem;">ver.2.x.x</span>
                         <span class="version-arrow">▼</span>
                     </div>
-                    <div id="v2_0" class="version-group-content" style="display: block;">
+                    <div id="v2_0" class="version-group-content" style="display: none;">
+                        <!-- v2.1.0 -->
+                        <div class="version-item" style="border:none; padding:0; margin-bottom:16px;">
+                            <div class="version-header">
+                                <span class="version-tag" style="background: #eab308; color: #000;">ver.2.1.0</span>
+                                <span class="version-date">2026/05/10</span>
+                            </div>
+                            <ul class="version-notes">
+                                <li>シークレット画像に視覚的な「SECRET」ラベルを追加 🏷️</li>
+                                <li>投稿一覧・地図・詳細画面のすべてでシークレット画像が判別可能に</li>
+                                <li>KC送金システムをエスクロー方式にアップデートし、安全性を向上 🛡️</li>
+                                <li>シークレット画像のプライバシー保護（ぼかし処理）を大幅に強化 🌫️</li>
+                            </ul>
+                        </div>
                         <!-- v2.0.0 -->
                         <div class="version-item" style="border:none; padding:0; margin-bottom:16px;">
                             <div class="version-header">
@@ -511,7 +527,7 @@
                     <div id="user-id-display"
                         style="font-family: monospace; font-size: 0.85rem; color: var(--primary-color); word-break: break-all;">
                     </div>
-                    <div style="font-size: 0.7rem; color: var(--text-muted); text-align: right;">v2.0.0</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); text-align: right;">v2.1.0</div>
                 </div>
 
                 <button class="btn btn-secondary" onclick="closeModal('info-modal')"
@@ -526,7 +542,7 @@
 
 
         <!-- App JS - MUST load before Google Maps API so initMap is defined -->
-        <script src="js/app.js?v=1.3.5"></script>
+        <script src="js/app.js?v=2.1.0"></script>
 
         <!-- Google Maps API - calls initMap callback after loading -->
         <script id="gmap-script"

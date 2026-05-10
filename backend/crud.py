@@ -59,8 +59,11 @@ def create_user_media(db: Session, media: schemas.MediaCreate, user_id: int, fil
     db.refresh(db_media)
     return db_media
 
-def get_all_media(db: Session):
-    return db.query(models.Media).all()
+def get_all_media(db: Session, since_id: int = None):
+    query = db.query(models.Media)
+    if since_id is not None:
+        query = query.filter(models.Media.id > since_id)
+    return query.all()
 
 def delete_media(db: Session, media_id: int, user_id: int):
     media = db.query(models.Media).filter(models.Media.id == media_id).first()

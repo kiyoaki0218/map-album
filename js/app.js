@@ -27,10 +27,16 @@ let knownAdminUsernames = [
 knownAdminUsernames = [...new Set(knownAdminUsernames)];
 
 // Debug: Log admin list on load
-console.log("Map Album v1.3.5 - Known Admins:", knownAdminUsernames);
-console.log("Map Album v1.3.5 - Supporters:", HARDCODED_SUPPORTER_USERNAMES);
+console.log("Map Album v2.1.0 - Known Admins:", knownAdminUsernames);
+console.log("Map Album v2.1.0 - Supporters:", HARDCODED_SUPPORTER_USERNAMES);
 
 // --- Global Helpers (Available immediately) ---
+function getOptimizedUrl(url, options = "w_400,f_auto,q_auto") {
+    if (url && url.includes('cloudinary.com') && url.includes('/upload/')) {
+        return url.replace('/upload/', `/upload/${options}/`);
+    }
+    return url;
+}
 
 window.showInfoModal = () => {
     const modal = document.getElementById('info-modal');
@@ -108,7 +114,7 @@ function openImageModal(mediaId) {
     const imgParam = document.getElementById('modal-image');
     const descParam = document.getElementById('modal-desc');
 
-    imgParam.src = media.filepath;
+    imgParam.src = getOptimizedUrl(media.filepath, "w_1200,f_auto,q_auto");
     descParam.innerText = media.description || '';
 
     // Manage buttons
@@ -124,6 +130,11 @@ function openImageModal(mediaId) {
         unlockBtn.style.display = 'none';
         tipBtn.style.display = 'flex';
         dlBtn.style.display = 'flex';
+    }
+
+    const secretLabel = document.getElementById('modal-secret-label');
+    if (secretLabel) {
+        secretLabel.style.display = media.is_secret ? 'inline-flex' : 'none';
     }
 
     modal.classList.add('active');
@@ -390,6 +401,7 @@ window.showLikeUsersForMedia = function (mediaId, latLngKey) {
 // --- Posts List Modal ---
 
 let allMediaCache = [];  // Cache all media for the posts list
+let lastMediaId = 0;     // Track the last fetched media ID for delta updates
 let currentPostsSort = 'time';  // 'time' or 'popular'
 let sortAscending = false;  // false = newest first (▼), true = oldest first (▲)
 
@@ -439,13 +451,12 @@ function renderPostsGrid() {
 
     let html = '';
     posts.forEach(media => {
-        const thumbUrl = media.filepath.includes('cloudinary')
-            ? media.filepath.replace('/upload/', '/upload/w_200,h_200,c_fill/')
-            : media.filepath;
+        const thumbUrl = getOptimizedUrl(media.filepath, "w_200,h_200,c_fill,f_auto,q_auto");
 
         html += `
             <div class="post-item" onclick="navigateToPost(${media.latitude}, ${media.longitude}, ${media.id})">
                 <img src="${thumbUrl}" alt="" loading="lazy">
+                ${media.is_secret ? `<div class="post-secret-label">SECRET</div>` : ''}
                 ${media.like_count > 0 ? `<div class="post-likes">❤️ ${media.like_count}</div>` : ''}
             </div>
         `;
@@ -590,7 +601,8 @@ function initMap() {
             },
             () => {
                 console.log("Geolocation permission denied or error.");
-            }
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     }
 
@@ -929,13 +941,33 @@ async function fetchMedia() {
         if (currentUser) {
             url += '&username=' + encodeURIComponent(currentUser);
         }
-        const response = await fetch(url);
-        allMediaCache = await response.json(); // Update global cache
+        if (lastMediaId > 0) {
+            url += '&since_id=' + lastMediaId;
+        }
 
-        updateMarkers();
+        const response = await fetch(url);
+        const newData = await response.json();
+
+        if (newData && newData.length > 0) {
+            // Check for duplicates just in case (e.g. if since_id logic on server has edge cases)
+            const existingIds = new Set(allMediaCache.map(m => m.id));
+            const itemsToAdd = newData.filter(m => !existingIds.has(m.id));
+
+            if (itemsToAdd.length > 0) {
+                allMediaCache = [...allMediaCache, ...itemsToAdd];
+                
+                // Update lastMediaId to the highest ID seen
+                const maxIdInNewData = Math.max(...newData.map(m => m.id));
+                if (maxIdInNewData > lastMediaId) {
+                    lastMediaId = maxIdInNewData;
+                }
+
+                console.log(`Delta update: added ${itemsToAdd.length} new items. Total: ${allMediaCache.length}`);
+                updateMarkers();
+            }
+        }
     } catch (err) {
-        console.error(err);
-        // alert("エラーが発生しました。"); // Suppress initial load error alert to avoid spam
+        console.error("fetchMedia error:", err);
     }
 }
 
@@ -1163,7 +1195,11 @@ function updateInfoWindowContent(marker, infowindow) {
             </div>
             
             <div style="position: relative; overflow: hidden; border-radius: 8px; margin-bottom: 8px;">
-                <img src="${displayPath}" class="fade-in" onclick="openImageModal(${media.id})" style="cursor: pointer; width: 100%; height: 150px; object-fit: cover; display: block;">
+                <img src="${getOptimizedUrl(displayPath, "w_400,f_auto,q_auto")}" class="fade-in" onclick="openImageModal(${media.id})" style="cursor: pointer; width: 100%; height: 150px; object-fit: cover; display: block;">
+                ${media.is_secret ? `
+                <div class="secret-badge" style="position: absolute; top: 8px; left: 8px; z-index: 5;">
+                    <span class="material-icons-round" style="font-size: 14px;">lock</span> SECRET
+                </div>` : ''}
             </div>
             
             <p style="margin-bottom: 5px; overflow-wrap: break-word;">${media.description || ''}</p>
