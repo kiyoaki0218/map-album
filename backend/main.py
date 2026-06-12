@@ -222,19 +222,22 @@ def process_region_bonus(db: Session, user, latitude: float, longitude: float):
 
 @router.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_user_by_username(db, username=user.username)
-    
-    if db_user:
-        updated_user = crud.update_user_profile(
-            db=db, 
-            user_id=db_user.id, 
-            display_name=user.display_name, 
-            icon=user.icon,
-            kc_address=user.kc_address
-        )
-        return updated_user
-    
-    return crud.create_user(db=db, user=user)
+    try:
+        db_user = crud.get_user_by_username(db, username=user.username)
+        if db_user:
+            updated_user = crud.update_user_profile(
+                db=db, 
+                user_id=db_user.id, 
+                display_name=user.display_name, 
+                icon=user.icon,
+                kc_address=user.kc_address
+            )
+            return updated_user
+        return crud.create_user(db=db, user=user)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.get("/users/{username}", response_model=schemas.UserPublic)
 def read_user(username: str, db: Session = Depends(get_db)):
