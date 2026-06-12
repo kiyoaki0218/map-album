@@ -121,65 +121,88 @@
     <div id="login-modal" class="modal active">
         <div class="modal-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3 style="margin: 0;">プロフィール設定</h3>
+                <h3 style="margin: 0;">🗺️ Map Album</h3>
                 <button onclick="closeModal('login-modal')"
                     style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0;">×</button>
             </div>
-            <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 20px;">マップに表示されるあなたの名前とアイコンを決めてください。</p>
 
-            <form id="login-form">
-                <!-- Username is auto-generated -->
+            <!-- タブ切り替え -->
+            <div style="display: flex; gap: 4px; margin-bottom: 20px; background: #1e293b; border-radius: 8px; padding: 4px;">
+                <button id="login-tab-kc" onclick="switchLoginTab('kc')"
+                    style="flex:1; padding: 8px; border: none; border-radius: 6px; background: #3b82f6; color: white; font-size: 0.85rem; cursor: pointer; font-weight: bold;">
+                    🔑 KC鍵でログイン
+                </button>
+                <button id="login-tab-guest" onclick="switchLoginTab('guest')"
+                    style="flex:1; padding: 8px; border: none; border-radius: 6px; background: transparent; color: #94a3b8; font-size: 0.85rem; cursor: pointer;">
+                    👤 ゲストで利用
+                </button>
+            </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="display-name">表示名 (日本語OK)</label>
-                    <input type="text" id="display-name" class="form-input" placeholder="田中 太郎" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="kc-secret">KC 秘密鍵 (シークレットキー) <span style="font-size: 0.8em; color: #94a3b8;">※ブラウザ内にのみ保存されます</span></label>
-                    <input type="password" id="kc-secret" class="form-input" placeholder="省略可能ですが、投げ銭に必要です">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">アイコンを選択</label>
-                    <div class="icon-selector"
-                        style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
-                        <label>
-                            <input type="radio" name="icon" value="🐨" checked hidden>
-                            <span class="icon-option"
-                                style="font-size: 2rem; padding: 10px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🐨</span>
-                        </label>
-                        <label>
-                            <input type="radio" name="icon" value="🐱" hidden>
-                            <span class="icon-option"
-                                style="font-size: 2rem; padding: 10px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🐱</span>
-                        </label>
-                        <label>
-                            <input type="radio" name="icon" value="🐶" hidden>
-                            <span class="icon-option"
-                                style="font-size: 2rem; padding: 10px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🐶</span>
-                        </label>
-                        <label>
-                            <input type="radio" name="icon" value="🦊" hidden>
-                            <span class="icon-option"
-                                style="font-size: 2rem; padding: 10px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🦊</span>
-                        </label>
-                        <label>
-                            <input type="radio" name="icon" value="🦁" hidden>
-                            <span class="icon-option"
-                                style="font-size: 2rem; padding: 10px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🦁</span>
-                        </label>
+            <!-- KC鍵ログインパネル -->
+            <div id="login-panel-kc">
+                <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 16px;">KC秘密鍵でログインします。投げ銭・シークレット解除が使えます。</p>
+                <form id="login-form-kc">
+                    <div class="form-group">
+                        <label class="form-label" for="display-name-kc">表示名</label>
+                        <input type="text" id="display-name-kc" class="form-input" placeholder="田中 太郎" required>
                     </div>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" for="kc-seed-input">KC 秘密鍵（シード）</label>
+                        <div style="display: flex; gap: 6px;">
+                            <input type="password" id="kc-seed-input" class="form-input" placeholder="Base64形式の秘密鍵" style="flex:1;">
+                            <button type="button" id="gen-kc-seed-btn"
+                                style="padding: 8px 12px; background: #475569; border: none; color: white; border-radius: 6px; cursor: pointer; font-size: 0.8rem; white-space: nowrap;">
+                                新規生成
+                            </button>
+                        </div>
+                        <p style="font-size: 0.75rem; color: #f59e0b; margin-top: 6px;">⚠️ 生成した鍵は必ずメモしてください。</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">アイコン</label>
+                        <div style="display: flex; gap: 8px; justify-content: center; margin-top: 8px;">
+                            <label><input type="radio" name="icon-kc" value="🐨" checked hidden><span class="icon-option" style="font-size: 2rem; padding: 8px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🐨</span></label>
+                            <label><input type="radio" name="icon-kc" value="🐱" hidden><span class="icon-option" style="font-size: 2rem; padding: 8px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🐱</span></label>
+                            <label><input type="radio" name="icon-kc" value="🐶" hidden><span class="icon-option" style="font-size: 2rem; padding: 8px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🐶</span></label>
+                            <label><input type="radio" name="icon-kc" value="🦊" hidden><span class="icon-option" style="font-size: 2rem; padding: 8px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🦊</span></label>
+                            <label><input type="radio" name="icon-kc" value="🦁" hidden><span class="icon-option" style="font-size: 2rem; padding: 8px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🦁</span></label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 16px;">🔑 KC鍵でログイン</button>
+                </form>
+            </div>
 
+            <!-- ゲストパネル -->
+            <div id="login-panel-guest" style="display:none;">
+                <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 16px;">KC鍵なしでゲストとして利用できます。セッションはクッキーに保存されます。</p>
+                <form id="login-form-guest">
+                    <div class="form-group">
+                        <label class="form-label" for="display-name-guest">表示名</label>
+                        <input type="text" id="display-name-guest" class="form-input" placeholder="田中 太郎" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">アイコン</label>
+                        <div style="display: flex; gap: 8px; justify-content: center; margin-top: 8px;">
+                            <label><input type="radio" name="icon-guest" value="🐨" checked hidden><span class="icon-option" style="font-size: 2rem; padding: 8px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🐨</span></label>
+                            <label><input type="radio" name="icon-guest" value="🐱" hidden><span class="icon-option" style="font-size: 2rem; padding: 8px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🐱</span></label>
+                            <label><input type="radio" name="icon-guest" value="🐶" hidden><span class="icon-option" style="font-size: 2rem; padding: 8px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🐶</span></label>
+                            <label><input type="radio" name="icon-guest" value="🦊" hidden><span class="icon-option" style="font-size: 2rem; padding: 8px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🦊</span></label>
+                            <label><input type="radio" name="icon-guest" value="🦁" hidden><span class="icon-option" style="font-size: 2rem; padding: 8px; border-radius: 50%; background: #334155; cursor: pointer; display: inline-block;">🦁</span></label>
+                        </div>
+                    </div>
+                    <div style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 0.8rem; color: #fca5a5;">
+                        ⚠️ ゲストモード: 投げ銭・シークレット解除は利用できません。
+                    </div>
+                    <button type="submit" class="btn btn-secondary" style="margin-top: 8px; background: #475569; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer;">👤 ゲストとして始める</button>
+                </form>
+            </div>
 
-
-                <button type="submit" class="btn btn-primary" style="margin-top: 20px;">はじめる</button>
-            </form>
+            <!-- 旧フォーム(互換性用・非表示) -->
+            <form id="login-form" style="display:none;"></form>
+            <input type="hidden" id="display-name" value="">
+            <input type="hidden" id="kc-secret" value="">
         </div>
     </div>
-
-    <!-- Image Detail Modal (Lightbox) -->
+<!-- Image Detail Modal (Lightbox) -->
     <div id="image-modal" class="modal" onclick="closeModal('image-modal')">
         <div class="modal-content"
             style="max-width: 90%; width: auto; background: transparent; box-shadow: none; border: none; text-align: center;"

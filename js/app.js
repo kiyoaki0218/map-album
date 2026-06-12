@@ -1,3 +1,19 @@
+﻿/* Cookie helpers for guest session persistence */
+function setCookie(name, value, days) {
+  var d = new Date();
+  d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+  document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/';
+}
+function getCookie(name) {
+  var nameEQ = name + '=';
+  var ca = document.cookie.split(';');
+  for (var i = 0; i < ca.length; i++) {
+    var c = ca[i].trim();
+    if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length));
+  }
+  return null;
+}
+function deleteCookie(name) { setCookie(name, '', -1); }
 /* static/js/app.js */
 
 
@@ -540,7 +556,7 @@ window.navigateToPost = function (lat, lng, mediaId) {
 
 let map;
 let currentInfoWindow = null; // Track currently open info window
-let currentUser = localStorage.getItem('map_album_user');
+let currentUser = localStorage.getItem('map_album_user') || getCookie('map_album_user');
 // Auth Check - use helper
 let isAdmin = currentUser ? isKnownAdmin(currentUser) : false;
 
@@ -692,6 +708,16 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             localStorage.setItem('map_album_profile', JSON.stringify(userProfile));
             localStorage.setItem('map_album_user', username);
 
+            // KC秘密鍵あり → cookieにもseed/userを保存（鍵ログイン）
+            if (kcSecret) {
+                setCookie('map_album_user', username, 365);
+                setCookie('map_album_seed', kcSecret, 365);
+            } else {
+                // ゲストアカウント → cookieに保存（ブラウザに永続化）
+                setCookie('map_album_user', username, 365);
+                deleteCookie('map_album_seed');
+            }
+
             // Update local admin state
             isAdmin = isKnownAdmin(username);
 
@@ -714,6 +740,150 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 });
 
 
+// --- タブ切り替え ---
+window.switchLoginTab = function(tab) {
+    const kcPanel = document.getElementById('login-panel-kc');
+    const guestPanel = document.getElementById('login-panel-guest');
+    const kcBtn = document.getElementById('login-tab-kc');
+    const guestBtn = document.getElementById('login-tab-guest');
+    if (tab === 'kc') {
+        kcPanel.style.display = '';
+        guestPanel.style.display = 'none';
+        kcBtn.style.background = '#3b82f6';
+        kcBtn.style.color = 'white';
+        guestBtn.style.background = 'transparent';
+        guestBtn.style.color = '#94a3b8';
+    } else {
+        kcPanel.style.display = 'none';
+        guestPanel.style.display = '';
+        kcBtn.style.background = 'transparent';
+        kcBtn.style.color = '#94a3b8';
+        guestBtn.style.background = '#3b82f6';
+        guestBtn.style.color = 'white';
+    }
+};
+
+// KC鍵ログインフォーム
+document.addEventListener('DOMContentLoaded', () => {
+    const genBtn = document.getElementById('gen-kc-seed-btn');
+    if (genBtn) {
+        genBtn.addEventListener('click', () => {
+            const keyPair = nacl.sign.keyPair();
+            const seed = nacl.util.encodeBase64(keyPair.secretKey.slice(0, 32));
+            document.getElementById('kc-seed-input').value = seed;
+            document.getElementById('kc-seed-input').type = 'text';
+            setTimeout(() => { document.getElementById('kc-seed-input').type = 'password'; }, 3000);
+        });
+    }
+
+    const kcForm = document.getElementById('login-form-kc');
+    if (kcForm) {
+        kcForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const seed = document.getElementById('kc-seed-input').value.trim();
+            const displayName = document.getElementById('display-name-kc').value.trim();
+            const selectedIcon = document.querySelector('input[name="icon-kc"]:checked').value;
+
+            if (!seed) { alert('KC秘密鍵を入力してください。'); return; }
+
+            try {
+                const secretBytes = nacl.util.decodeBase64(seed);
+                const keyPair = nacl.sign.keyPair.fromSecretKey(secretBytes);
+                const publicKeyBase64 = nacl.util.encodeBase64(keyPair.publicKey);
+
+                const binaryString = window.atob(publicKeyBase64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+                const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+                const kcAddress = hashHex.slice(0, 40);
+
+                localStorage.setItem('kc_secret', seed);
+                localStorage.setItem('kc_public', publicKeyBase64);
+                localStorage.setItem('kc_address', kcAddress);
+
+                let username = localStorage.getItem('map_album_user') || getCookie('map_album_user') || ('user_' + Math.random().toString(36).substr(2, 9));
+
+                const response = await fetch('/api/users/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password: 'password123', display_name: displayName, icon: selectedIcon, kc_address: kcAddress })
+                });
+
+                if (response.ok || response.status === 400) {
+                    currentUser = username;
+                    const profile = { username, display_name: displayName, icon: selectedIcon };
+                    localStorage.setItem('map_album_profile', JSON.stringify(profile));
+                    localStorage.setItem('map_album_user', username);
+                    localStorage.setItem('map_album_seed', seed);
+                    // cookieにも保存
+                    setCookie('map_album_user', username, 365);
+                    setCookie('map_album_seed', seed, 365);
+                    deleteCookie('map_album_guest_id');
+
+                    isAdmin = isKnownAdmin(username);
+                    const loginModal = document.getElementById('login-modal');
+                    if (loginModal) loginModal.classList.remove('active');
+                    updateUserDisplay();
+                    fetchUserProfile(true);
+                } else {
+                    alert('登録に失敗しました。');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('KC秘密鍵の形式が不正です: ' + err.message);
+            }
+        });
+    }
+
+    const guestForm = document.getElementById('login-form-guest');
+    if (guestForm) {
+        guestForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const displayName = document.getElementById('display-name-guest').value.trim();
+            const selectedIcon = document.querySelector('input[name="icon-guest"]:checked').value;
+
+            // ゲストID: cookieかlocalStorageから復元、なければ新規生成
+            let guestId = localStorage.getItem('map_album_guest_id') || getCookie('map_album_guest_id');
+            if (!guestId) {
+                guestId = 'user_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('map_album_guest_id', guestId);
+                setCookie('map_album_guest_id', guestId, 365);
+            }
+
+            try {
+                const response = await fetch('/api/users/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: guestId, password: 'password123', display_name: displayName, icon: selectedIcon, kc_address: null })
+                });
+
+                if (response.ok || response.status === 400) {
+                    currentUser = guestId;
+                    const profile = { username: guestId, display_name: displayName, icon: selectedIcon };
+                    localStorage.setItem('map_album_profile', JSON.stringify(profile));
+                    localStorage.setItem('map_album_user', guestId);
+                    // ゲスト → cookieに保存（KC seedは削除）
+                    setCookie('map_album_user', guestId, 365);
+                    setCookie('map_album_profile', JSON.stringify(profile), 365);
+                    deleteCookie('map_album_seed');
+                    localStorage.removeItem('map_album_seed');
+                    localStorage.removeItem('kc_secret');
+
+                    isAdmin = isKnownAdmin(guestId);
+                    const loginModal = document.getElementById('login-modal');
+                    if (loginModal) loginModal.classList.remove('active');
+                    updateUserDisplay();
+                } else {
+                    alert('ゲスト登録に失敗しました。');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('エラーが発生しました: ' + err.message);
+            }
+        });
+    }
+});
 // Helper to get formatted user name HTML
 function getUserNameHtml(user) {
     if (!user) return '<span class="user-name">Unknown</span>';
@@ -1618,4 +1788,7 @@ if (document.readyState === 'loading') {
 } else {
     initUploadHandlers();
 }
+
+
+
 
