@@ -827,7 +827,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateUserDisplay();
                     fetchUserProfile(true);
                 } else {
-                    alert('登録に失敗しました。');
+                    const errDetail = await response.text();
+                    alert('登録に失敗しました。ステータス: ' + response.status + '\n原因: ' + errDetail);
                 }
             } catch (err) {
                 console.error(err);

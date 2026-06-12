@@ -666,4 +666,10 @@ input[type="radio"]:focus+.icon-option {
     gap: 4px;
     margin-bottom: 12px;
     box-shadow: 0 4px 10px rgba(217, 119, 6, 0.3);
-}
+}
+/* Active state for custom radio-based emoji icons */
+input[type="radio"]:checked + .icon-option {
+    background: #3b82f6 !important;
+    outline: 2px solid #ffffff;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
