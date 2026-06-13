@@ -788,7 +788,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const secretBytes = nacl.util.decodeBase64(seed);
-                const keyPair = nacl.sign.keyPair.fromSecretKey(secretBytes);
+                let keyPair;
+                if (secretBytes.length === 64) {
+                    keyPair = nacl.sign.keyPair.fromSecretKey(secretBytes);
+                } else if (secretBytes.length === 32) {
+                    keyPair = nacl.sign.keyPair.fromSeed(secretBytes);
+                } else {
+                    throw new Error("鍵のサイズが正しくありません (32バイトまたは64バイトである必要があります)");
+                }
                 const publicKeyBase64 = nacl.util.encodeBase64(keyPair.publicKey);
 
                 const binaryString = window.atob(publicKeyBase64);
