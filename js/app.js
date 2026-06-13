@@ -182,7 +182,14 @@ async function signAndSendKC(toAddress, amountStr, actualTo = null) {
     
     try {
         const secretBytes = nacl.util.decodeBase64(kcSecretBase64);
-        const keyPair = nacl.sign.keyPair.fromSecretKey(secretBytes);
+        let keyPair;
+        if (secretBytes.length === 64) {
+            keyPair = nacl.sign.keyPair.fromSecretKey(secretBytes);
+        } else if (secretBytes.length === 32) {
+            keyPair = nacl.sign.keyPair.fromSeed(secretBytes);
+        } else {
+            throw new Error("鍵のサイズが正しくありません (32バイトまたは64バイトである必要があります)");
+        }
         const publicKeyBase64 = nacl.util.encodeBase64(keyPair.publicKey);
         const fromAddress = localStorage.getItem('kc_address');
         
@@ -655,7 +662,14 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     if (kcSecret) {
         try {
             const secretBytes = nacl.util.decodeBase64(kcSecret);
-            const keyPair = nacl.sign.keyPair.fromSecretKey(secretBytes);
+            let keyPair;
+            if (secretBytes.length === 64) {
+                keyPair = nacl.sign.keyPair.fromSecretKey(secretBytes);
+            } else if (secretBytes.length === 32) {
+                keyPair = nacl.sign.keyPair.fromSeed(secretBytes);
+            } else {
+                throw new Error("鍵のサイズが正しくありません (32バイトまたは64バイトである必要があります)");
+            }
             publicKeyBase64 = nacl.util.encodeBase64(keyPair.publicKey);
             
             const binaryString = window.atob(publicKeyBase64);
